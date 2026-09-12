@@ -35,8 +35,10 @@ jobs:
           node-version: "20"
           cache: npm
       - run: npm install -g vercel
-      - name: Link Vercel project
-        run: vercel link --yes --token "$VERCEL_TOKEN"
+      - name: Create Vercel project link
+        run: |
+          mkdir -p .vercel
+          echo '{"orgId":"'"$VERCEL_ORG_ID"'","projectId":"'"$VERCEL_PROJECT_ID"'"}' > .vercel/project.json
       - name: Pull Vercel environment
         run: vercel pull --yes --token "$VERCEL_TOKEN"
       - name: Build
@@ -56,8 +58,10 @@ jobs:
           node-version: "20"
           cache: npm
       - run: npm install -g vercel
-      - name: Link Vercel project
-        run: vercel link --yes --token "$VERCEL_TOKEN"
+      - name: Create Vercel project link
+        run: |
+          mkdir -p .vercel
+          echo '{"orgId":"'"$VERCEL_ORG_ID"'","projectId":"'"$VERCEL_PROJECT_ID"'"}' > .vercel/project.json
       - name: Pull Vercel environment
         run: vercel pull --yes --environment=production --token "$VERCEL_TOKEN"
       - name: Build for production
