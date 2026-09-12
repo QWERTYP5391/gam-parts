@@ -5,6 +5,8 @@ import { asc } from "drizzle-orm";
 import { RegisterForm } from "@/components/auth/register-form";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
+export const dynamic = "force-dynamic";
+
 export default async function RegisterPage() {
   const allTowns = await db
     .select({ id: towns.id, name: towns.name, region: towns.region })
