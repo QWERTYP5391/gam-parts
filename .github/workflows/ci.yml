@@ -1,0 +1,114 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.head_ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: "20"
+
+jobs:
+  typecheck-and-lint:
+    name: Typecheck & Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - run: npm run lint
+
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: npm run test:unit
+
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: gamparts
+          POSTGRES_PASSWORD: gamparts_dev
+          POSTGRES_DB: gamparts
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U gamparts"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+    env:
+      DATABASE_URL: postgresql://gamparts:gamparts_dev@localhost:5432/gamparts
+      NEXTAUTH_SECRET: ci-test-secret-not-for-production
+      NEXTAUTH_URL: http://localhost:3000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - name: Push schema & enable extensions
+        run: |
+          npx drizzle-kit push
+          PGPASSWORD=gamparts_dev psql -h localhost -U gamparts -d gamparts -c 'CREATE EXTENSION IF NOT EXISTS pg_trgm;'
+      - name: Seed database
+        run: npm run db:seed
+      - run: npm run test:integration
+
+  e2e-tests:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: gamparts
+          POSTGRES_PASSWORD: gamparts_dev
+          POSTGRES_DB: gamparts
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U gamparts"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+    env:
+      DATABASE_URL: postgresql://gamparts:gamparts_dev@localhost:5432/gamparts
+      NEXTAUTH_SECRET: ci-test-secret-not-for-production
+      NEXTAUTH_URL: http://localhost:3000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps
+      - name: Push schema & enable extensions
+        run: |
+          npx drizzle-kit push
+          PGPASSWORD=gamparts_dev psql -h localhost -U gamparts -d gamparts -c 'CREATE EXTENSION IF NOT EXISTS pg_trgm;'
+      - name: Seed database
+        run: npm run db:seed
+      - name: Build application
+        run: npm run build
+      - run: npm run test:e2e
