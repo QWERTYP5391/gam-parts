@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import Link from "next/link";
 import { LoginForm } from "@/components/auth/login-form";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
